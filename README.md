@@ -23,9 +23,6 @@
 
 | 变量名 | 值 |
 |--------|-----|
-| `VECTORENGINE_API_KEY` | `sk-21IglzG8TtcksTtH3uSgmNLPkMSqvxBJ2iJibOVRMtc8aGsM` |
-| `API_BASE_URL` | `https://api.vectorengine.ai` |
-| `API_MODEL` | `gpt-5.4` |
 
 保存后点 `Redeploy` 重新部署一次。
 
