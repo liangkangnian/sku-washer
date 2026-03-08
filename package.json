@@ -1,0 +1,7 @@
+{
+  "name": "sku-washer",
+  "version": "1.0.0",
+  "description": "洗SKU神器",
+  "private": true,
+  "engines": { "node": ">=18" }
+}
