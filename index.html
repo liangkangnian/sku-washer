@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SKU 洗词工具</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f5f3ee;--surface:#fff;--surface2:#faf8f4;--border:#e2ddd5;--border2:#ccc7bd;--accent:#d4380d;--accent-light:#fff1ed;--accent2:#1677ff;--text:#1a1a1a;--text-dim:#8c8680;--text-muted:#c4bdb5;--success:#52c41a;--radius:12px;--shadow:0 2px 12px rgba(0,0,0,.08)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans SC',sans-serif;min-height:100vh;display:flex;flex-direction:column}
+header{position:relative;z-index:10;background:var(--surface);border-bottom:1px solid var(--border);padding:0 32px;display:flex;align-items:center;height:56px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;letter-spacing:-.3px}
+.logo-badge{background:var(--accent);color:#fff;font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;letter-spacing:.5px}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.stat-chip{background:var(--accent-light);color:var(--accent);font-size:12px;font-weight:500;padding:4px 12px;border-radius:50px;font-family:'JetBrains Mono',monospace}
+.tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);padding:0 32px;position:relative;z-index:9}
+.tab{padding:12px 20px;font-size:13px;font-weight:500;color:var(--text-dim);cursor:pointer;border:none;background:transparent;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s}
+.tab:hover{color:var(--text)}.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+main{position:relative;z-index:1;flex:1;padding:24px 32px;max-width:1300px;margin:0 auto;width:100%}
+.tab-panel{display:none}.tab-panel.active{display:flex;flex-direction:column;gap:16px}
+.workspace{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden}
+.card-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--surface2)}
+.card-title{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--text-dim)}
+.card-title-dot{width:7px;height:7px;border-radius:50%;background:var(--border2);flex-shrink:0}
+.card-title-dot.active{background:var(--accent)}
+.card-actions{display:flex;align-items:center;gap:6px}
+.btn-icon{display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text-dim);cursor:pointer;transition:all .15s;font-size:13px}
+.btn-icon:hover{border-color:var(--border2);color:var(--text)}
+textarea{width:100%;flex:1;min-height:320px;border:none;outline:none;padding:16px;font-family:'JetBrains Mono',monospace;font-size:13.5px;line-height:2;color:var(--text);background:transparent;resize:none}
+textarea::placeholder{color:var(--text-muted);font-family:'Noto Sans SC',sans-serif;font-size:13px}
+.result-area{flex:1;min-height:320px;padding:16px;font-family:'JetBrains Mono',monospace;font-size:13.5px;line-height:2;white-space:pre-wrap;word-break:break-all;overflow-y:auto}
+.result-line{display:block;padding:2px 6px;border-radius:4px;margin-bottom:2px;transition:background .15s;cursor:pointer}
+.result-line:hover{background:var(--accent-light)}.result-line.flash{background:#f6ffed}
+.result-placeholder{color:var(--text-muted);font-family:'Noto Sans SC',sans-serif;font-size:13px;font-style:italic}
+.card-footer{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--border);background:var(--surface2)}
+.line-count{font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace}
+.wash-btn{display:flex;align-items:center;gap:8px;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:10px 28px;font-family:'Noto Sans SC',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;box-shadow:0 2px 8px rgba(212,56,13,.3);letter-spacing:.3px}
+.wash-btn:hover{background:#b7320b;transform:translateY(-1px);box-shadow:0 4px 16px rgba(212,56,13,.4)}
+.wash-btn:active{transform:translateY(0)}.wash-btn:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-spinner{width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:none}
+.btn-spinner.show{display:block}
+@keyframes spin{to{transform:rotate(360deg)}}
+.toolbar{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 16px;box-shadow:var(--shadow);flex-wrap:wrap}
+.toolbar-label{font-size:12px;color:var(--text-dim);font-weight:500}
+.mode-btn{padding:5px 14px;border-radius:50px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--text-dim);transition:all .15s}
+.mode-btn:hover{border-color:var(--accent);color:var(--accent)}.mode-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.divider{width:1px;height:20px;background:var(--border);flex-shrink:0}.toolbar-right{margin-left:auto}
+.copy-all-btn{display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--text-dim);transition:all .15s}
+.copy-all-btn:hover{border-color:var(--accent2);color:var(--accent2)}
+.history-list{display:flex;flex-direction:column;gap:8px}
+.history-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.history-card:hover{border-color:var(--accent);box-shadow:var(--shadow)}
+.history-card-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:var(--surface2);border-bottom:1px solid var(--border)}
+.history-count{font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text-muted)}
+.history-time{font-size:11px;color:var(--text-muted)}
+.history-preview{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;padding:10px 16px;align-items:start}
+.history-col{font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.7;color:var(--text-dim);overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
+.history-col.result{color:var(--accent)}.history-arrow{color:var(--text-muted);font-size:16px;padding-top:2px}
+.settings-grid{display:flex;flex-direction:column;gap:12px}
+.settings-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.settings-section-title{font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted);padding:12px 16px 8px;background:var(--surface2);border-bottom:1px solid var(--border)}
+.setting-row{display:flex;align-items:flex-start;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);gap:16px}
+.setting-row:last-child{border-bottom:none}
+.setting-label{font-size:14px;font-weight:500;margin-bottom:3px}.setting-sub{font-size:12px;color:var(--text-dim);line-height:1.5}
+.toggle{width:38px;height:20px;border-radius:50px;background:var(--border2);position:relative;cursor:pointer;transition:background .2s;flex-shrink:0;margin-top:2px}
+.toggle.on{background:var(--accent)}.toggle::after{content:'';position:absolute;left:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.toggle.on::after{left:20px}
+textarea.rules-editor{width:100%;min-height:260px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.7;border:none;outline:none;padding:16px;background:var(--surface2);color:var(--text);resize:vertical}
+.save-btn{background:var(--accent2);color:#fff;border:none;border-radius:6px;padding:8px 18px;font-family:'Noto Sans SC',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:opacity .15s}
+.save-btn:hover{opacity:.9}
+.loading-lines{display:flex;flex-direction:column;gap:10px;padding:4px 0}
+.loading-line{height:18px;background:linear-gradient(90deg,var(--border) 25%,var(--surface2) 50%,var(--border) 75%);background-size:200% 100%;animation:shimmer 1.2s infinite;border-radius:4px}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.progress-bar-wrap{height:3px;background:var(--border);display:none}
+.progress-bar-wrap.show{display:block}.progress-bar{height:100%;background:var(--accent);transition:width .3s;width:0}
+.error-msg{color:#cf1322;background:#fff1f0;border:1px solid #ffa39e;border-radius:8px;padding:10px 14px;font-size:13px;margin:12px}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(12px);background:#1a1a1a;color:#fff;border-radius:50px;padding:8px 18px;font-size:13px;opacity:0;transition:all .25s;pointer-events:none;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.25)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media(max-width:900px){.workspace{grid-template-columns:1fr}header,.tabs,main{padding-left:16px;padding-right:16px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">🧺 SKU 洗词 <span class="logo-badge">AI</span></div>
+  <div class="header-right"><span class="stat-chip" id="today-count">今日 0 条</span></div>
+</header>
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('wash')">洗 SKU</button>
+  <button class="tab" onclick="switchTab('history')">历史记录</button>
+  <button class="tab" onclick="switchTab('settings')">规则 &amp; 设置</button>
+</div>
+<main>
+  <div class="tab-panel active" id="tab-wash">
+    <div class="toolbar">
+      <span class="toolbar-label">改写强度</span>
+      <button class="mode-btn active" id="mode-normal" onclick="setMode('normal')">标准</button>
+      <button class="mode-btn" id="mode-light" onclick="setMode('light')">轻度</button>
+      <button class="mode-btn" id="mode-deep" onclick="setMode('deep')">深度</button>
+      <div class="divider"></div>
+      <span class="toolbar-label">批量</span>
+      <button class="mode-btn" id="batch-toggle" onclick="toggleBatch()">逐行模式</button>
+      <div class="toolbar-right"><button class="copy-all-btn" onclick="copyAll()">📋 全部复制</button></div>
+    </div>
+    <div class="workspace">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><div class="card-title-dot active"></div>原始 SKU</div>
+          <div class="card-actions">
+            <button class="btn-icon" onclick="clearInput()" title="清空">✕</button>
+            <button class="btn-icon" onclick="pasteClipboard()" title="粘贴">📋</button>
+          </div>
+        </div>
+        <textarea id="input-sku" placeholder="粘贴旧 SKU，每行一条&#10;&#10;例如：&#10;蓝色女款卫衣 宽松版 M码 单件&#10;红色运动套装 S码 上衣+裤子 2件套" oninput="onInput()"></textarea>
+        <div class="card-footer">
+          <span class="line-count" id="input-line-count">0 行 / 0 字符</span>
+          <button class="wash-btn" onclick="doWash()" id="wash-btn">
+            <div class="btn-spinner" id="btn-spinner"></div>
+            <span id="wash-btn-text">🧺 开始洗词</span>
+          </button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><div class="card-title-dot" id="output-dot"></div>改写结果</div>
+          <div class="card-actions"><span style="font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace" id="output-info"></span></div>
+        </div>
+        <div class="progress-bar-wrap" id="progress-wrap"><div class="progress-bar" id="progress-bar"></div></div>
+        <div class="result-area" id="result-area">
+          <span class="result-placeholder">改写后的 SKU 将显示在此处<br><br>💡 点击任意一行可单独复制</span>
+        </div>
+        <div class="card-footer">
+          <span class="line-count" id="output-line-count"></span>
+          <span style="font-size:11px;color:var(--text-muted)" id="powered-by"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-history">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div style="font-size:16px;font-weight:600">历史记录</div>
+      <button class="btn-icon" onclick="clearHistory()" style="width:auto;padding:6px 12px;font-size:12px">清空全部</button>
+    </div>
+    <div class="history-list" id="history-list">
+      <div style="color:var(--text-muted);text-align:center;padding:48px;font-size:14px">暂无洗词记录</div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-settings">
+    <div class="settings-grid">
+      <div class="settings-card">
+        <div class="settings-section-title">改写规则（System Prompt）</div>
+        <textarea class="rules-editor" id="rules-editor"></textarea>
+        <div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:12px;color:var(--text-dim)">修改后点击保存，下次洗词即生效</span>
+          <button class="save-btn" onclick="saveRules()">✓ 保存规则</button>
+        </div>
+      </div>
+      <div class="settings-card">
+        <div class="settings-section-title">行为设置</div>
+        <div class="setting-row">
+          <div><div class="setting-label">保存洗词历史</div><div class="setting-sub">本地记录每次洗词结果</div></div>
+          <div class="toggle on" id="toggle-history" onclick="toggleSetting('history')"></div>
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-label">自动复制结果</div><div class="setting-sub">洗词完成后自动复制到剪贴板</div></div>
+          <div class="toggle" id="toggle-autocopy" onclick="toggleSetting('autocopy')"></div>
+        </div>
+      </div>
+      <div class="settings-card">
+        <div class="settings-section-title">API 信息</div>
+        <div class="setting-row">
+          <div><div class="setting-label">模型</div><div class="setting-sub" style="font-family:'JetBrains Mono',monospace">gpt-5.4 · vectorengine.ai</div></div>
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-label">接口代理</div><div class="setting-sub">通过 Vercel Serverless 函数转发，无跨域限制</div></div>
+          <span style="font-size:11px;color:var(--success);font-weight:500">✓ 正常</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+<div class="toast" id="toast"></div>
+<script>
+const DEFAULT_RULES=`你是一个电商SKU撰写以及优化助手。
+我会输入我对sku的自然语言描述想法或者是旧的拼多多商品SKU文本，请你直接对我的想法或者旧SKU进行改写，以降低平台比价识别概率。
+改写规则：
+1. 必须适当加入以下符号进行结构变化：
+【】 （） - + / 丨：
+2. 可以使用以下SKU组合模式（灵活使用）：
+- 款式详情说明 + 组合内容
+- 尺码 + 组合数量
+- 规格 + 场景 + 数量
+- 颜色 + 款式 + 组合内容 + 推荐词
+- 颜色 + 款式 + 功能
+3. 改写要求：
+- 保留SKU核心含义，不改变商品信息
+- 可以使用近义词或补充描述
+- 合理加入符号改变结构
+- 不要完全照抄原句
+- 每一行SKU分别改写
+- 如果输入是多行，就逐行改写
+4. 输出规则（非常重要）：
+- 只输出改写后的SKU
+- 不要解释
+- 不要添加任何说明
+- 不要重复原SKU
+- 保持与输入相同的行数`;
+let history=JSON.parse(localStorage.getItem('sku_history')||'[]');
+let settings=JSON.parse(localStorage.getItem('sku_settings')||'{"history":true,"autocopy":false}');
+let rules=localStorage.getItem('sku_rules')||DEFAULT_RULES;
+let mode='normal',isBatch=false,isLoading=false,lastResults=[];
+let todayCount=parseInt(localStorage.getItem('sku_today_'+today())||'0');
+document.getElementById('rules-editor').value=rules;
+updateTodayCount();
+Object.keys(settings).forEach(k=>{const el=document.getElementById('toggle-'+k);if(el)el.classList.toggle('on',settings[k]);});
+function today(){return new Date().toISOString().slice(0,10);}
+function updateTodayCount(){document.getElementById('today-count').textContent=`今日 ${todayCount} 条`;}
+function switchTab(name){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  ['wash','history','settings'].forEach((t,i)=>{if(t===name)document.querySelectorAll('.tab')[i].classList.add('active');});
+  if(name==='history')renderHistory();
+}
+function onInput(){const t=document.getElementById('input-sku').value;const l=t?t.trim().split('\n').filter(x=>x.trim()).length:0;document.getElementById('input-line-count').textContent=`${l} 行 / ${t.length} 字符`;}
+function clearInput(){document.getElementById('input-sku').value='';onInput();document.getElementById('result-area').innerHTML='<span class="result-placeholder">改写后的 SKU 将显示在此处<br><br>💡 点击任意一行可单独复制</span>';document.getElementById('output-line-count').textContent='';document.getElementById('output-info').textContent='';document.getElementById('powered-by').textContent='';document.getElementById('output-dot').classList.remove('active');lastResults=[];}
+async function pasteClipboard(){try{const t=await navigator.clipboard.readText();document.getElementById('input-sku').value=t;onInput();}catch{showToast('请手动粘贴（Ctrl+V）');}}
+function setMode(m){mode=m;['normal','light','deep'].forEach(n=>document.getElementById('mode-'+n).classList.toggle('active',n===m));}
+function toggleBatch(){isBatch=!isBatch;const b=document.getElementById('batch-toggle');b.classList.toggle('active',isBatch);b.textContent=isBatch?'✓ 逐行模式':'逐行模式';}
+async function doWash(){
+  const input=document.getElementById('input-sku').value.trim();
+  if(!input||isLoading)return;
+  const lines=input.split('\n').filter(l=>l.trim());
+  if(!lines.length)return;
+  setLoading(true);lastResults=[];
+  const extra=mode==='light'?'\n注意：本次改写强度为【轻度】，只做小幅结构调整。':mode==='deep'?'\n注意：本次改写强度为【深度】，大幅重组结构，大量使用符号和近义词。':'';
+  const sys=rules+extra;
+  if(isBatch){
+    showProgress(true);
+    const area=document.getElementById('result-area');area.innerHTML='';
+    for(let i=0;i<lines.length;i++){
+      setProgress((i/lines.length)*100);
+      const el=document.createElement('span');el.className='result-line';el.style.color='var(--text-muted)';el.textContent='改写中...';area.appendChild(el);
+      try{const r=await callAPI(sys,lines[i]);el.style.color='';el.textContent=r;el.onclick=()=>copyLine(r,el);lastResults.push(r);todayCount++;updateTodayCount();localStorage.setItem('sku_today_'+today(),todayCount);}
+      catch{el.style.color='var(--accent)';el.textContent='⚠ 改写失败';lastResults.push(lines[i]);}
+    }
+    setProgress(100);setTimeout(()=>showProgress(false),600);
+  }else{
+    showLoadingLines(lines.length);
+    try{const r=await callAPI(sys,lines.join('\n'));const rl=r.split('\n').filter(l=>l.trim());lastResults=rl;renderResults(rl);todayCount+=rl.length;updateTodayCount();localStorage.setItem('sku_today_'+today(),todayCount);}
+    catch(err){document.getElementById('result-area').innerHTML=`<div class="error-msg">⚠ 请求失败：${err.message}</div>`;}
+  }
+  if(settings.history&&lastResults.length)saveHistory(lines,lastResults);
+  if(settings.autocopy&&lastResults.length){await navigator.clipboard.writeText(lastResults.join('\n'));showToast('✓ 已自动复制全部结果');}
+  if(lastResults.length){document.getElementById('output-dot').classList.add('active');document.getElementById('output-line-count').textContent=`${lastResults.length} 行`;document.getElementById('output-info').textContent=`共 ${lastResults.length} 条`;document.getElementById('powered-by').textContent='✦ gpt-5.4';}
+  setLoading(false);
+}
+async function callAPI(sys,content){
+  const res=await fetch('/api/wash',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system:sys,messages:[{role:'user',content}],max_tokens:2000})});
+  if(!res.ok){const e=await res.text();throw new Error(`HTTP ${res.status}: ${e.slice(0,120)}`);}
+  const data=await res.json();
+  const text=data.choices?.[0]?.message?.content?.trim();
+  if(!text)throw new Error('API 返回内容为空');
+  return text;
+}
+function setLoading(v){isLoading=v;document.getElementById('wash-btn').disabled=v;document.getElementById('btn-spinner').classList.toggle('show',v);document.getElementById('wash-btn-text').textContent=v?'洗词中...':'🧺 开始洗词';}
+function showLoadingLines(count){const lines=Array.from({length:Math.min(count,8)},(_,i)=>`<div class="loading-line" style="width:${70+Math.random()*25}%;animation-delay:${i*.1}s"></div>`).join('');document.getElementById('result-area').innerHTML=`<div class="loading-lines">${lines}</div>`;}
+function renderResults(lines){document.getElementById('result-area').innerHTML=lines.map(l=>`<span class="result-line" onclick="copyLine(this.textContent,this)">${esc(l)}</span>`).join('');}
+function showProgress(show){document.getElementById('progress-wrap').classList.toggle('show',show);}
+function setProgress(pct){document.getElementById('progress-bar').style.width=pct+'%';}
+async function copyLine(text,el){try{await navigator.clipboard.writeText(text.trim());el.classList.add('flash');setTimeout(()=>el.classList.remove('flash'),600);showToast('✓ 已复制');}catch{showToast('复制失败');}}
+async function copyAll(){if(!lastResults.length){showToast('暂无结果');return;}try{await navigator.clipboard.writeText(lastResults.join('\n'));showToast(`✓ 已复制全部 ${lastResults.length} 条`);}catch{showToast('复制失败，请手动选择');}}
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function saveHistory(originals,results){history.unshift({originals,results,time:Date.now()});if(history.length>200)history=history.slice(0,200);localStorage.setItem('sku_history',JSON.stringify(history));}
+function renderHistory(){const list=document.getElementById('history-list');if(!history.length){list.innerHTML='<div style="color:var(--text-muted);text-align:center;padding:48px;font-size:14px">暂无洗词记录</div>';return;}list.innerHTML=history.map((h,i)=>`<div class="history-card" onclick="loadHistory(${i})"><div class="history-card-header"><span class="history-count">${h.originals.length} 条 SKU</span><span class="history-time">${formatTime(h.time)}</span></div><div class="history-preview"><div class="history-col">${h.originals.slice(0,3).map(esc).join('\n')}</div><div class="history-arrow">→</div><div class="history-col result">${h.results.slice(0,3).map(esc).join('\n')}</div></div></div>`).join('');}
+function loadHistory(idx){const h=history[idx];switchTab('wash');document.getElementById('input-sku').value=h.originals.join('\n');onInput();lastResults=h.results;renderResults(h.results);document.getElementById('output-line-count').textContent=`${h.results.length} 行`;document.getElementById('output-info').textContent=`共 ${h.results.length} 条`;document.getElementById('output-dot').classList.add('active');}
+function clearHistory(){if(!confirm('确定清空所有历史记录？'))return;history=[];localStorage.setItem('sku_history','[]');renderHistory();}
+function formatTime(ts){const d=new Date(ts),now=new Date(),diff=(now-d)/1000;if(diff<60)return '刚刚';if(diff<3600)return Math.floor(diff/60)+' 分钟前';if(diff<86400)return Math.floor(diff/3600)+' 小时前';if(diff<86400*7)return Math.floor(diff/86400)+' 天前';return d.toLocaleDateString('zh-CN');}
+function toggleSetting(key){settings[key]=!settings[key];document.getElementById('toggle-'+key).classList.toggle('on',settings[key]);localStorage.setItem('sku_settings',JSON.stringify(settings));}
+function saveRules(){rules=document.getElementById('rules-editor').value;localStorage.setItem('sku_rules',rules);showToast('✓ 规则已保存');}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000);}
+</script>
+</body>
+</html>
