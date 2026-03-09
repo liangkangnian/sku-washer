@@ -30,7 +30,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: model || apiModel,
-        max_tokens: max_tokens || 2000,
+        max_tokens: max_tokens || 300,
         messages: finalMessages,
       }),
     });
