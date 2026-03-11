@@ -40,6 +40,13 @@ textarea::placeholder{color:var(--text-muted);font-family:'Noto Sans SC',sans-se
 .wash-btn{display:flex;align-items:center;gap:8px;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:10px 28px;font-family:'Noto Sans SC',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;box-shadow:0 2px 8px rgba(212,56,13,.3);letter-spacing:.3px}
 .wash-btn:hover{background:#b7320b;transform:translateY(-1px);box-shadow:0 4px 16px rgba(212,56,13,.4)}
 .wash-btn:active{transform:translateY(0)}.wash-btn:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+.editor-textarea{flex:none;min-height:180px;resize:vertical}
+.editor-footer{gap:12px;flex-wrap:wrap}
+.editor-footer-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.editor-btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--text-dim);transition:all .15s}
+.editor-btn:hover{border-color:var(--accent);color:var(--accent)}
+.editor-btn.primary{background:var(--accent-light);border-color:#ffd8bf;color:var(--accent)}
+.editor-hint{font-size:12px;color:var(--text-dim)}
 .btn-spinner{width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:none}
 .btn-spinner.show{display:block}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -80,6 +87,7 @@ textarea.rules-editor{width:100%;min-height:260px;font-family:'JetBrains Mono',m
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(12px);background:#1a1a1a;color:#fff;border-radius:50px;padding:8px 18px;font-size:13px;opacity:0;transition:all .25s;pointer-events:none;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.25)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 @media(max-width:900px){.workspace{grid-template-columns:1fr}header,.tabs,main{padding-left:16px;padding-right:16px}}
+@media(max-width:640px){.editor-footer{align-items:flex-start}.editor-footer-right{width:100%}.editor-btn{flex:1}}
 </style>
 </head>
 <body>
@@ -135,6 +143,26 @@ textarea.rules-editor{width:100%;min-height:260px;font-family:'JetBrains Mono',m
           <span class="line-count" id="output-line-count"></span>
           <span style="font-size:11px;color:var(--text-muted)" id="powered-by"></span>
         </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><div class="card-title-dot active"></div>自由编辑区</div>
+        <div class="card-actions">
+          <button class="editor-btn primary" onclick="syncResultsToEditor(true)">载入改写结果</button>
+          <button class="editor-btn" onclick="copyEditor()">复制内容</button>
+          <button class="editor-btn" onclick="clearEditor()">清空</button>
+        </div>
+      </div>
+      <textarea
+        id="manual-editor"
+        class="editor-textarea"
+        placeholder="这里可以自由编辑最终文案。&#10;&#10;默认会在结果区洗词完成后自动同步到这里；你也可以手动输入或粘贴内容继续修改。"
+        oninput="onManualEdit()"
+      ></textarea>
+      <div class="card-footer editor-footer">
+        <span class="line-count" id="manual-line-count">0 行 / 0 字符</span>
+        <span class="editor-hint">编辑区内容会保存在当前浏览器，本地刷新后仍可继续修改</span>
       </div>
     </div>
   </div>
@@ -213,11 +241,14 @@ const DEFAULT_RULES=`你是一个电商SKU撰写以及优化助手。
 let history=JSON.parse(localStorage.getItem('sku_history')||'[]');
 let settings=JSON.parse(localStorage.getItem('sku_settings')||'{"history":true,"autocopy":false}');
 let rules=localStorage.getItem('sku_rules')||DEFAULT_RULES;
-let mode='normal',isBatch=false,isLoading=false,lastResults=[];
+let mode='normal',isBatch=false,isLoading=false,lastResults=[],lastEditorSync='';
 let todayCount=parseInt(localStorage.getItem('sku_today_'+today())||'0');
 document.getElementById('rules-editor').value=rules;
+document.getElementById('manual-editor').value=localStorage.getItem('sku_manual_editor')||'';
 updateTodayCount();
 Object.keys(settings).forEach(k=>{const el=document.getElementById('toggle-'+k);if(el)el.classList.toggle('on',settings[k]);});
+onInput();
+onManualEdit();
 function today(){return new Date().toISOString().slice(0,10);}
 function updateTodayCount(){document.getElementById('today-count').textContent=`今日 ${todayCount} 条`;}
 function switchTab(name){
@@ -227,7 +258,9 @@ function switchTab(name){
   ['wash','history','settings'].forEach((t,i)=>{if(t===name)document.querySelectorAll('.tab')[i].classList.add('active');});
   if(name==='history')renderHistory();
 }
-function onInput(){const t=document.getElementById('input-sku').value;const l=t?t.trim().split('\n').filter(x=>x.trim()).length:0;document.getElementById('input-line-count').textContent=`${l} 行 / ${t.length} 字符`;}
+function countLines(t){return t?t.split('\n').filter(x=>x.trim()).length:0;}
+function onInput(){const t=document.getElementById('input-sku').value;document.getElementById('input-line-count').textContent=`${countLines(t)} 行 / ${t.length} 字符`;}
+function onManualEdit(){const t=document.getElementById('manual-editor').value;document.getElementById('manual-line-count').textContent=`${countLines(t)} 行 / ${t.length} 字符`;localStorage.setItem('sku_manual_editor',t);}
 function clearInput(){document.getElementById('input-sku').value='';onInput();document.getElementById('result-area').innerHTML='<span class="result-placeholder">改写后的 SKU 将显示在此处<br><br>💡 点击任意一行可单独复制</span>';document.getElementById('output-line-count').textContent='';document.getElementById('output-info').textContent='';document.getElementById('powered-by').textContent='';document.getElementById('output-dot').classList.remove('active');lastResults=[];}
 async function pasteClipboard(){try{const t=await navigator.clipboard.readText();document.getElementById('input-sku').value=t;onInput();}catch{showToast('请手动粘贴（Ctrl+V）');}}
 function setMode(m){mode=m;['normal','light','deep'].forEach(n=>document.getElementById('mode-'+n).classList.toggle('active',n===m));}
@@ -257,7 +290,7 @@ async function doWash(){
   }
   if(settings.history&&lastResults.length)saveHistory(lines,lastResults);
   if(settings.autocopy&&lastResults.length){await navigator.clipboard.writeText(lastResults.join('\n'));showToast('✓ 已自动复制全部结果');}
-  if(lastResults.length){document.getElementById('output-dot').classList.add('active');document.getElementById('output-line-count').textContent=`${lastResults.length} 行`;document.getElementById('output-info').textContent=`共 ${lastResults.length} 条`;document.getElementById('powered-by').textContent='✦ gpt-5.4';}
+  if(lastResults.length){document.getElementById('output-dot').classList.add('active');document.getElementById('output-line-count').textContent=`${lastResults.length} 行`;document.getElementById('output-info').textContent=`共 ${lastResults.length} 条`;document.getElementById('powered-by').textContent='✦ gpt-5.4';syncResultsToEditor();}
   setLoading(false);
 }
 async function callAPI(sys,content){
@@ -275,10 +308,23 @@ function showProgress(show){document.getElementById('progress-wrap').classList.t
 function setProgress(pct){document.getElementById('progress-bar').style.width=pct+'%';}
 async function copyLine(text,el){try{await navigator.clipboard.writeText(text.trim());el.classList.add('flash');setTimeout(()=>el.classList.remove('flash'),600);showToast('✓ 已复制');}catch{showToast('复制失败');}}
 async function copyAll(){if(!lastResults.length){showToast('暂无结果');return;}try{await navigator.clipboard.writeText(lastResults.join('\n'));showToast(`✓ 已复制全部 ${lastResults.length} 条`);}catch{showToast('复制失败，请手动选择');}}
+function syncResultsToEditor(force=false){
+  if(!lastResults.length){if(force)showToast('暂无结果可载入');return;}
+  const editor=document.getElementById('manual-editor');
+  const next=lastResults.join('\n');
+  if(force&&editor.value&&editor.value!==lastEditorSync&&editor.value!==next&&!confirm('编辑区已有手动内容，是否覆盖为最新改写结果？'))return;
+  if(!force&&editor.value&&editor.value!==lastEditorSync)return;
+  editor.value=next;
+  lastEditorSync=next;
+  onManualEdit();
+  if(force)showToast('✓ 已载入编辑区');
+}
+async function copyEditor(){const text=document.getElementById('manual-editor').value.trim();if(!text){showToast('编辑区为空');return;}try{await navigator.clipboard.writeText(text);showToast('✓ 已复制编辑内容');}catch{showToast('复制失败');}}
+function clearEditor(){const editor=document.getElementById('manual-editor');if(!editor.value)return;if(!confirm('确定清空编辑区内容？'))return;editor.value='';lastEditorSync='';onManualEdit();showToast('已清空编辑区');}
 function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function saveHistory(originals,results){history.unshift({originals,results,time:Date.now()});if(history.length>200)history=history.slice(0,200);localStorage.setItem('sku_history',JSON.stringify(history));}
 function renderHistory(){const list=document.getElementById('history-list');if(!history.length){list.innerHTML='<div style="color:var(--text-muted);text-align:center;padding:48px;font-size:14px">暂无洗词记录</div>';return;}list.innerHTML=history.map((h,i)=>`<div class="history-card" onclick="loadHistory(${i})"><div class="history-card-header"><span class="history-count">${h.originals.length} 条 SKU</span><span class="history-time">${formatTime(h.time)}</span></div><div class="history-preview"><div class="history-col">${h.originals.slice(0,3).map(esc).join('\n')}</div><div class="history-arrow">→</div><div class="history-col result">${h.results.slice(0,3).map(esc).join('\n')}</div></div></div>`).join('');}
-function loadHistory(idx){const h=history[idx];switchTab('wash');document.getElementById('input-sku').value=h.originals.join('\n');onInput();lastResults=h.results;renderResults(h.results);document.getElementById('output-line-count').textContent=`${h.results.length} 行`;document.getElementById('output-info').textContent=`共 ${h.results.length} 条`;document.getElementById('output-dot').classList.add('active');}
+function loadHistory(idx){const h=history[idx];switchTab('wash');document.getElementById('input-sku').value=h.originals.join('\n');onInput();lastResults=h.results;renderResults(h.results);document.getElementById('output-line-count').textContent=`${h.results.length} 行`;document.getElementById('output-info').textContent=`共 ${h.results.length} 条`;document.getElementById('output-dot').classList.add('active');syncResultsToEditor();}
 function clearHistory(){if(!confirm('确定清空所有历史记录？'))return;history=[];localStorage.setItem('sku_history','[]');renderHistory();}
 function formatTime(ts){const d=new Date(ts),now=new Date(),diff=(now-d)/1000;if(diff<60)return '刚刚';if(diff<3600)return Math.floor(diff/60)+' 分钟前';if(diff<86400)return Math.floor(diff/3600)+' 小时前';if(diff<86400*7)return Math.floor(diff/86400)+' 天前';return d.toLocaleDateString('zh-CN');}
 function toggleSetting(key){settings[key]=!settings[key];document.getElementById('toggle-'+key).classList.toggle('on',settings[key]);localStorage.setItem('sku_settings',JSON.stringify(settings));}
